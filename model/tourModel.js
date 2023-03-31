@@ -8,6 +8,8 @@ const tourSchema = new mongoose.Schema(
       required: [true, 'A tour must have a name'],
       unique: true,
       trim: true,
+      maxlength: [40, 'A tour name should have at most 40 characters'],
+      minlength: [10, 'A tour name should have at least 10 characters'],
     },
     slug: String,
     duration: {
@@ -21,17 +23,32 @@ const tourSchema = new mongoose.Schema(
     difficulty: {
       type: String,
       required: [true, 'A tour must have a difficulty'],
+      enum: {
+        values: ['easy', 'medium', 'difficult'],
+        message: 'Difficulty is easy, medium, difficult',
+      },
     },
     ratingsAverage: {
       type: Number,
       default: 4.5,
+      min: [1, 'rating must be above or equal to 1.0'],
+      max: [5, 'rating must be below or equal to 5.0'],
     },
     ratingsQuantity: {
       type: Number,
       default: 0,
     },
     price: { type: Number, required: [true, 'A tour must have a price'] },
-    priceDiscount: Number,
+    priceDiscount: {
+      type: Number,
+      validate: {
+        // this only points to the current doc on NEW document creation
+        validator: function (value) {
+          return value < this.price;
+        },
+        message: 'Discount price ({VALUE}) should be below regular price',
+      },
+    },
     summary: {
       type: String,
       trim: true,
@@ -83,12 +100,11 @@ tourSchema.pre('save', function (next) {
 // });
 
 // Query middleware
-// tourSchema.pre(/^find/, function (next) {
-//   // tourSchema.pre('find', function (next) {
-//   this.find({ secretTour: { $ne: true } });
-//   this.start = Date.now();
-//   next();
-// });
+tourSchema.pre(/^find/, function (next) {
+  // tourSchema.pre('find', function (next) {
+  this.find({ secretTour: { $ne: true } });
+  next();
+});
 
 // tourSchema.post(/^find/, function (docs, next) {
 //   console.log(docs);
