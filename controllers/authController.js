@@ -170,3 +170,33 @@ exports.resetPassword = async (req, res, next) => {
     token,
   });
 };
+
+exports.updatePassword = async (req, res, next) => {
+  let token;
+  const { password, newPassword, passwordConfirm } = req.body;
+  // 1. Get the user from the collection
+  if (req.headers.authorization.startsWith('Bearer'))
+    token = req.headers.authorization.split(' ')[1];
+  else
+    return next(new AppError("You're not logged in, please login again", 401));
+  const { id } = jwt.verify(token, process.env.JWT_SECRET);
+  const user = await User.findById(id).select('+password');
+
+  // 2. Check if the posted password is correct
+  const isValid = await user.correctPassword(password, user.password);
+
+  // 3. If so, update password
+  if (isValid) {
+    user.password = newPassword;
+    user.passwordConfirm = passwordConfirm;
+    user.save();
+  } else return next(new AppError('Incorrect password', 401));
+
+  // 4. Log user in, send jwt
+  token = signToken(id);
+
+  res.status(200).json({
+    status: 'success',
+    token,
+  });
+};
